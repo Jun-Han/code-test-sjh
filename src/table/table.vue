@@ -1,192 +1,163 @@
 <template>
-    <section class="cpnt-table"
+    <!-- 表格组件 -->
+    <section class="comp-table"
              :style="tableStyle">
-      <table>
-          <!-- 列头 -->
+      <table class="table-body">
+
+          <!-- 表头 -->
           <tr>
-            <th v-for="({ key, title }) in tcolumns"
+            <th v-for="({ key, title }) in columns"
                 :key="key"
                 @click="onSort(key)">
-                {{ title }}
+                <slot :name="'head-' + key">
+                  {{ title }}
+                </slot>
             </th>
           </tr>
 
           <!-- 列内容 -->
           <tr v-for="(record, index) in renderedData"
-              :key="'trow' + index">
-            <td v-for="({ key }) in tcolumns"
+              :key="'cell' + index">
+            <td v-for="({ key }) in columns"
                 :key="key">
                 <slot :name="key" 
                       :record="record" 
-                      :value="record.key"> 
+                      :value="record[key]"> 
                   {{ record[key] }}
                 </slot>
             </td>
           </tr>
       </table>
 
-      <!-- 分页器 -->
-      <div v-if="pageSize"
-           class="pagination">
-           <button @click="onPagePre">上一页</button>
-           <button @click="onPageNext">下一页</button>
-      </div>
+      <pagination :options="paginationOpt" 
+                  @page-change="onPageChange" />
     </section>
 </template>
 
 <script lang="ts">
-/**
- * @author: sjh
- * @since: 2020-08-13 10:26:39
- * @Last Modified by: sjh
- * @Last Modified by: sjh021-10-21 09:31:29
- * @Last Modified time: 2021-10-21 10:04:07��
- */
-
 import { defineComponent, computed, ref, watch } from '@vue/composition-api'
+import Pagination from '../table_pagination/pagination.vue'
 
 import cloneDeep from 'lodash-es/cloneDeep'
-import isObject from 'lodash-es/isObject'
-
-import { sortDirection, defaultSort, tableProps } from './const'
+import { getCurrentPageData, getAcsSordata  } from './util'
+import { sortDirection, tableProps } from './const'
+import { defaultSortParams } from './const'
  
 export default defineComponent({
   name: 'Table',
   props: tableProps,
-  setup(props) {
+  components: {
+    Pagination
+  },
+  setup(props, { emit }) {
     
-    /** ������ʽ */
+    /** 自定义表格宽度 */
     const tableStyle = computed(() => {
-      return `width: ${ props.width + (typeof props.width === 'number' ? 'px' : '')}`
+      const tableWidth = props.options?.width;
+      return tableWidth ? 
+             `width: ${ props.options?.width + (typeof props.options?.width === 'number' ? 'px' : '')}` 
+             : ''
     })
 
-    /** ����������� */
-    let allData = ref(cloneDeep(props.tdata)) 
+    /** 表格原始数据 */
+    let allData = ref(cloneDeep(props.data))
 
-    /** ��¼��ǰҳ�� */
-    let pageIndex = ref(1)
+    /** 表格当前需要渲染的数据 */
+    let renderedData = ref(getCurrentPageData(allData.value, props.pagination?.pageIndex, props.pagination?.pageSize))
 
-    /** ��ǰҳ��Ⱦ������ */
-    let renderedData = ref(getCurrentPageData(pageIndex.value, props.pageSize, allData.value))
+    /** 分页器配置 */
+    let paginationOpt = ref(cloneDeep(props.pagination))
+    paginationOpt.value.total = paginationOpt.value.total ?? allData.value.length
 
-    /** ������� */
-    let sortParams = ref(cloneDeep(defaultSort))
+    /** 排序参数 */
+    let sortParams = ref(cloneDeep(defaultSortParams))
 
-    /** props.tdata�ı�ʱ�������ڲ�������Ӧʽ���� */
-    watch(props.tdata, () => {
-      allData.value = cloneDeep(props.tdata)
-      sortParams.value = cloneDeep(defaultSort)
-      pageIndex.value = 1
-      updtRenderData()
+    /** props.data变化时，重置所有状态*/
+    watch(props.data, () => {
+      allData.value = cloneDeep(props.data)
+      sortParams.value = cloneDeep(defaultSortParams)
+      updtRenderData(1)
     })
 
-    /** ���µ�ǰ�������Ⱦ���� */
-    function updtRenderData() {
-      renderedData.value = getCurrentPageData(pageIndex.value, props.pageSize, allData.value);
-    }
-
-    /** ��һҳ������pageIndex����ˢ�±�����Ⱦ���� */
-    function onPagePre() {
-      (pageIndex.value > 1) && pageIndex.value--
-      updtRenderData();
-    }
-
-    /** ��һҳ������pageIndex����ˢ�±�����Ⱦ���� */
-    function onPageNext() {
-      (props.pageSize > 0) &&
-      (pageIndex.value < allData.value.length/props.pageSize) && 
-      pageIndex.value++
-      updtRenderData();
+    /** 更新表格需要渲染的数据 */
+    function updtRenderData(pageIndex: number) {
+      renderedData.value = getCurrentPageData(allData.value, pageIndex, props.pagination?.pageSize);
     }
 
     /**
-     * �������򣺸��������ֶ�sortParams�����������������allData���������pageIndex��ˢ�±�����Ⱦ����
+     * 页码变化
+     * @param {number} pageIndex 
+     */
+    function onPageChange(pageIndex: number) {
+      updtRenderData(pageIndex)
+      emit('page-change')
+    }
+
+    /**
+     * 排序
      * @param {string} sortKey 
      */
     function onSort(sortKey: string) {
 
-      // �����ǰ�������������ԭ�����в���ͬһ�У��������������ֶ�
+      // 更换sortKey进行排序时，需要重置排序方向的顺序
       if(sortKey !== sortParams.value.sortKey) {
         sortParams.value.sortDirection = sortDirection.origin
       }
 
-      // ���������ֶ�
+      // 更新排序字段和排序方向
       sortParams.value.sortKey = sortKey
-      if(sortParams.value.sortDirection >= sortDirection.DES) {
+      if(sortParams.value.sortDirection >= sortDirection.des) {
         sortParams.value.sortDirection = sortDirection.origin
       } else {
         sortParams.value.sortDirection++
       }
 
-      // �Ա���������allData��������
       switch (sortParams.value.sortDirection) {
 
-        // ����
-        case sortDirection.ASC:
-          allData.value = getAcsSortData(sortKey, allData.value)
+        // 升序
+        case sortDirection.asc:
+          allData.value = getAcsSordata(sortKey, allData.value)
           break
 
-        // ����
-        case sortDirection.DES:
-          allData.value = getAcsSortData(sortKey, allData.value).reverse()
+        // 降序
+        case sortDirection.des:
+          allData.value = getAcsSordata(sortKey, allData.value).reverse()
           break
         
-        // �ָ�ԭʼ���ݵ�˳��
+        // 恢复原始顺序
         case sortDirection.origin:
-          allData.value = cloneDeep(props.tdata)
+          allData.value = cloneDeep(props.data)
           break
 
         default:
           break
       }
 	  
-	  // ���÷�ҳ
-      pageIndex.value = 1;
-      updtRenderData()
+      updtRenderData(1)
     }
 
     return {
         tableStyle,
         renderedData,
-        onPagePre,
-        onPageNext,
-        onSort
+        paginationOpt,
+        onSort,
+        onPageChange
     }
   }
 })
-
-/**
- * ��ȡ��ǰҳ�ķ�ҳ����
- * @param {number} pageIndex 
- * @param {number} pageSize 
- * @param {unknown[]} allData 
- * @returns {unknown[]}
- */
-function getCurrentPageData(pageIndex: number, pageSize: number, allData: unknown[]): unknown[] {
-  if(!pageSize) {
-    return cloneDeep(allData)
-  }
-  const startIndex = (pageIndex - 1) * pageSize
-  const endIndex = (pageIndex) * pageSize
-  return allData.slice(startIndex, endIndex)
-}
-
-/**
- * ������������
- * @param {string} sortKey 
- * @param {unknown[]} allData 
- * @returns {unknown[]}
- */
-function getAcsSortData(sortKey: string, allData: unknown[]): unknown[] {
-  let newAllData = cloneDeep(allData)
-  return newAllData.sort((pre: unknown, next: unknown) => {
-    const preKey = isObject(pre) && (pre[sortKey] ?? '')
-    const nextKey = isObject(next) && (next[sortKey] ?? '')
-    if (preKey < nextKey) return -1
-    if (preKey > nextKey) return 1
-    return 0
-  })
-}
 </script>
+
+<style lang="less">
+.comp-table {
+  .table-body {
+    width: 100%;
+
+    th {
+      cursor: pointer;
+      text-align: left;
+    }
+  }
+}
+</style>
 
    
