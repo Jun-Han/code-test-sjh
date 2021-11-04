@@ -2,22 +2,19 @@
     <!-- 表格组件 -->
     <section class="comp-table"
              :style="tableStyle">
-      <table class="table-body">
 
+      <table>
           <!-- 表头 -->
-          <tr>
-            <th v-for="({ key, title }) in columns"
-                :key="key"
-                @click="onSort(key)">
-                <slot :name="'head-' + key">
-                  {{ title }}
-                </slot>
-            </th>
-          </tr>
+          <table-head :columns="columns"
+                      @sort="onSort">
+            <template v-for="({ key, title }) in columns" #[key]>
+              <slot :name="`head-${key}`">{{ title }}</slot>
+            </template> 
+          </table-head>
 
-          <!-- 列内容 -->
+          <!-- 表格内容 -->
           <tr v-for="(record, index) in renderedData"
-              :key="'cell' + index">
+              :key="`cell${index}`">
             <td v-for="({ key }) in columns"
                 :key="key">
                 <slot :name="key" 
@@ -29,6 +26,7 @@
           </tr>
       </table>
 
+      <!-- 分页器 -->
       <pagination :options="paginationOpt" 
                   @page-change="onPageChange" />
     </section>
@@ -37,17 +35,20 @@
 <script lang="ts">
 import { defineComponent, computed, ref, watch } from '@vue/composition-api'
 import Pagination from '../table_pagination/pagination.vue'
+import TableHead from '../table_head/head.vue'
 
+import { useSort } from '../sort/sort'
 import cloneDeep from 'lodash-es/cloneDeep'
-import { getCurrentPageData, getAcsSordata  } from './util'
-import { sortDirection, tableProps } from './const'
-import { defaultSortParams } from './const'
+import { getCurrentPageData } from './util'
+import { tableProps } from './const'
+import { defaultSortParams } from '../sort/const'
  
 export default defineComponent({
   name: 'Table',
   props: tableProps,
   components: {
-    Pagination
+    Pagination,
+    TableHead
   },
   setup(props, { emit }) {
     
@@ -98,41 +99,7 @@ export default defineComponent({
      * @param {string} sortKey 
      */
     function onSort(sortKey: string) {
-
-      // 更换sortKey进行排序时，需要重置排序方向的顺序
-      if(sortKey !== sortParams.value.sortKey) {
-        sortParams.value.sortDirection = sortDirection.origin
-      }
-
-      // 更新排序字段和排序方向
-      sortParams.value.sortKey = sortKey
-      if(sortParams.value.sortDirection >= sortDirection.des) {
-        sortParams.value.sortDirection = sortDirection.origin
-      } else {
-        sortParams.value.sortDirection++
-      }
-
-      switch (sortParams.value.sortDirection) {
-
-        // 升序
-        case sortDirection.asc:
-          allData.value = getAcsSordata(sortKey, allData.value)
-          break
-
-        // 降序
-        case sortDirection.des:
-          allData.value = getAcsSordata(sortKey, allData.value).reverse()
-          break
-        
-        // 恢复原始顺序
-        case sortDirection.origin:
-          allData.value = cloneDeep(props.data)
-          break
-
-        default:
-          break
-      }
-	  
+      useSort(sortKey, sortParams, allData, props.data)
       updtRenderData(1)
     }
 
@@ -149,7 +116,7 @@ export default defineComponent({
 
 <style lang="less">
 .comp-table {
-  .table-body {
+  table {
     width: 100%;
 
     th {

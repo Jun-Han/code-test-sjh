@@ -1,5 +1,4 @@
-import cloneDeep from 'lodash-es/cloneDeep'
-import isObject from 'lodash-es/isObject'
+import { cloneDeep, isObject } from 'lodash-es'
 
 /**
  * 获取指定页的数据
