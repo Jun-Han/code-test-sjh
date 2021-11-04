@@ -1,4 +1,4 @@
-import { SortDirection } from '../sort/types'
+import { SortDirection } from '../../hooks/sort/types'
 
 /** 表头的参数类型 */
 export interface TableColumn {

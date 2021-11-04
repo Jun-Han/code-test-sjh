@@ -14,7 +14,11 @@ import { sortDirection } from './const';
 
 /**
  * 排序
- * @param {string} sortKey
+ * @param sortKey 
+ * @param sortParams 
+ * @param allData 
+ * @param originData 
+ * @returns 
  */
 export function useSort(sortKey: string, sortParams: Ref<SortParams>, allData: Ref<unknown[]>, originData: unknown[]) {
 

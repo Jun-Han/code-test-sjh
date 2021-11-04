@@ -34,14 +34,14 @@
 
 <script lang="ts">
 import { defineComponent, computed, ref, watch } from '@vue/composition-api'
-import Pagination from '../table_pagination/pagination.vue'
-import TableHead from '../table_head/head.vue'
+import Pagination from './components/table_pagination/pagination.vue'
+import TableHead from './components/table_head/head.vue'
 
-import { useSort } from '../sort/sort'
+import { useSort } from './hooks/sort/sort'
 import cloneDeep from 'lodash-es/cloneDeep'
 import { getCurrentPageData } from './util'
 import { tableProps } from './const'
-import { defaultSortParams } from '../sort/const'
+import { defaultSortParams } from './hooks/sort/const'
  
 export default defineComponent({
   name: 'Table',

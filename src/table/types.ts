@@ -1,4 +1,4 @@
-import { SortDirection } from  '../sort/types'
+import { SortDirection } from  './hooks/sort/types'
 
 /** 表格配置项 */
 export interface TableOptions {

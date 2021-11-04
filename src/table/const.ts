@@ -1,9 +1,9 @@
 
 import type { PropType } from 'vue-types/dist/types' 
 import { TableOptions } from "./types"
-import { TableColumn } from "../table_head/types"
-import { TablePagination } from "../table_pagination/types"
-import { defaultPaginationOpt } from "../table_pagination/const"
+import { TableColumn } from "./components/table_head/types"
+import { TablePagination } from "./components/table_pagination/types"
+import { defaultPaginationOpt } from "./components/table_pagination/const"
 
 /** 表格Props */
 export const tableProps = {
